@@ -39,6 +39,80 @@ public class Dispatcher {
     }
     
     // mainde çalışacak program fonksiyonu
+    public void program(){
+        while(true){
+        	
+        	// bu kontrol tüm processlerin tamamlanmasını kontrol eder
+        	if(isComletedAllProcess()) {
+        		break;
+        	}
+            overTime();
+            
+            // gerçek zamanlılar if koşuluyla burada çalışıtırılır , gerçek zamanlı olmayanlar kullanıcı kuyruğuna eklenir ve prosess listesinden çıkarılır
+            while(true){
+              Process process =  processList.peek();
+
+              // process listesinden çıkacak process zamanı gelmemesi durumunu kontrol eder
+              if( process == null || process.arriveTime > dispatcherTimer ){
+            	  break; 
+              }
+              
+              //gerçek zamanlı mı kontrol eder
+              if(process.priority == 0){
+                    if(realTimeQueue.isEmpty()){
+                        suspend();
+                    }
+                    //processin çalışmaya hazır mı durumunu kontrol eder
+                    if(isReadyToWork(process)){
+                        process.status="RUNNING";
+                        System.out.println(process.id + "\t    " + process.arriveTime + "\t\t" + process.priority + "\t  " + process.memorySize + "\t   " + process.printers + "\t\t" + process.scanner + "\t   " + process.modem + "\t  "+ process.cdDrivers + "\t" + process.status);
+                        realTimeQueue.add(process);
+                        allocateProcessResources(process);
+                        process.queueTime=dispatcherTimer;
+                    }
+                    else{
+                        if(process.memorySize >= 64)
+                        {
+                        	System.out.println(process.id +"\tHATA - Gerçek-zamanlı proses (64MB) tan daha fazla bellek talep ediyor - proses silindi");
+                        }
+                        else{
+                        	System.out.println(process.id + "\tHATA   - Proses çok sayıda kaynak talep ediyor - proses silindi");
+                        }
+                    }
+              }
+              else{
+            	  userQueue.add(process);
+              }
+              processList.remove(process);
+            }
+
+            // burada ise gerçek zamanlılar tamamlandıktan sonra kullanıcı kuyruğu tamamlanır
+            for(int i = 0 ; i<userQueue.size();i++){
+                Process process = userQueue.get(userQueue.size()-i-1);
+                //process çalışmak için hazır değilse hata verilir, hazırsa kaynaklar tahsis edilir ve kullanıcı kuyruğundan çıkarılır 
+                if(!isReadyToWork(process)){
+                    userQueue.remove(process);
+                    i++;
+                    if (process.memorySize > 960){
+                    	System.out.println(process.id + "\tHATA  Proses (960 MB) tan daha fazla bellek talep ediyor – proses silindi");
+                    }
+                    else{
+                    	System.out.println(process.id+ "\tHATA    Proses çok sayıda kaynak talep ediyor - proses silindi");
+                    }
+                }
+                else if(isEnoughSourceProcess(process)){
+                    allocateProcessResources(process);
+                    addMultiLevelQueue(process); 
+                    userQueue.remove(process);
+                    i++;
+                }
+            }
+
+            this.processScheduling();
+            
+            dispatcherTimer++;  
+        }
+    }
     
     // çalışmak için hazır mı fonksiyonu
     public  boolean isReadyToWork(Process process){
